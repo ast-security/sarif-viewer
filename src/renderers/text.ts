@@ -17,7 +17,6 @@ export function renderText(parsedLog: ParsedLog, opts: SarifOptions = {}): strin
     }
   });
 
-  // Add standard fields that aren't properties
   if (sorted.some(x => x.kind)) allKeys.add('Kind');
   if (sorted.some(x => x.message)) allKeys.add('Message');
   if (sorted.some(x => x.locations.some(l => l.filePath))) allKeys.add('File');
@@ -27,7 +26,6 @@ export function renderText(parsedLog: ParsedLog, opts: SarifOptions = {}): strin
   if (sorted.some(x => x.contextSnippet?.text)) allKeys.add('Snippet');
   if (sorted.some(x => x.ruleFullDescription)) allKeys.add('Description');
   if (sorted.some(x => x.occurenceCount)) allKeys.add('Occurrences');
-  if (sorted.some(x => x.ruleFullDescription)) allKeys.add('Description');
 
   const sortedKeys = Array.from(allKeys).sort();
 
@@ -60,80 +58,72 @@ export function renderText(parsedLog: ParsedLog, opts: SarifOptions = {}): strin
     const group = groups.get(level);
     if (!group || group.length === 0) continue;
 
-    d.push('### ' + level.toUpperCase() + ' (Count: ' + group.length + ')');
+    d.push(''.repeat(2) + level.toUpperCase() + ' (Count: ' + group.length + ')');
     d.push('');
 
     for (let idx = 0; idx < group.length; idx++) {
       const r = group[idx];
-      d.push('#### Result ' + (idx + 1) + ' - ' + r.ruleId);
+
+      // Separators around the result
+      d.push('────────────────────────────────────────────────────────────────────────────────────────────────────');
       d.push('');
-      d.push(getTableHeader(sortedKeys.join(' | ')));
-      d.push(getTableSeparator(sortedKeys));
-      d.push(getTableRow(sortedKeys, r, idx));
+
+      // Header
+      const headParts = ['Index'];
+      for (const key of sortedKeys) headParts.push(key);
+      d.push('  ' + headParts.join(' | '));
+
+      const vals = [String(idx + 1)];
+
+      for (const key of sortedKeys) {
+        let val = '-';
+        try {
+          if (key === 'Kind') {
+            val = r.kind || '';
+          } else if (key === 'Message') {
+            val = r.message;
+          } else if (key === 'File') {
+            const loc = r.locations.find(l => l.filePath);
+            if (loc) val = spp(loc.filePath || '');
+          } else if (key === 'Line') {
+            const loc = r.locations.find(l => l.filePath);
+            if (loc) val = String(loc.line);
+          } else if (key === 'Column') {
+            const loc = r.locations.find(l => l.filePath);
+            if (loc && loc.column) val = String(loc.column);
+          } else if (key === 'Description') {
+            val = r.ruleFullDescription || '';
+          } else if (key === 'Snippet') {
+            val = r.contextSnippet?.text?.split('\n')[0] || '';
+          } else if (key === 'Fix') {
+            val = r.fix?.description || '';
+          } else if (key === 'Occurrences') {
+            val = r.occurenceCount ? String(r.occurenceCount) : '-';
+          } else {
+            // Case-insensitive property lookup
+            const props = r.properties || {};
+            const lowKey = key.toLowerCase();
+            const upperKey = key.toUpperCase();
+            val = props[lowKey] || props[upperKey] || props[key] || '-';
+          }
+
+          if (val.length > 50) {
+            val = val.slice(0, 50) + '...';
+          }
+        } catch (err) {
+          val = 'ERR';
+        }
+
+        if (!val) val = '-';
+        vals.push(val);
+      }
+
+      d.push('  ' + vals.join(' | '));
       d.push('');
     }
   }
 
   return d.join('\n');
-}
-
-function getTableHeader(cols: string): string {
-  return '| # | ' + cols + ' |';
-}
-
-function getTableSeparator(keys: string[]): string {
-  const seps = keys.map(() => '---');
-  return '| --- | ' + seps.join(' | ') + ' |';
-}
-
-function getTableRow(keys: string[], r: ParsedResult, idx: number): string {
-  const values = new Map<string, string>();
-  values.set('Index', String(idx + 1));
-  values.set('Level', r.level);
-  values.set('RuleId', r.ruleId);
-
-  for (const key of keys) {
-    let val = '';
-    if (key === 'Kind') val = r.kind || '';
-    else if (key === 'Message') val = r.message;
-    else if (key === 'File') {
-      const loc = r.locations.find(l => l.filePath);
-      val = loc ? spp(loc.filePath) : '';
-    }
-    else if (key === 'Line') {
-      const loc = r.locations.find(l => l.filePath);
-      val = loc ? String(loc.line) : '';
-    }
-    else if (key === 'Column') {
-      const loc = r.locations.find(l => l.filePath);
-      val = loc && loc.column ? String(loc.column) : '';
-    }
-    else if (key === 'Description') {
-      val = r.ruleFullDescription || '';
-    }
-    else if (key === 'Snippet') {
-      val = r.contextSnippet?.text?.split('\n')[0] || '';
-    }
-    else if (key === 'Fix') {
-      val = r.fix?.description || '';
-    }
-    else if (key === 'Occurrences') {
-      val = r.occurenceCount ? String(r.occurenceCount) : '';
-    }
-    else {
-      // Custom property
-      val = r.properties?.[key.toLowerCase()] || r.properties?.[key] || '';
-    }
-
-    // Truncate very long values
-    if (val.length > 60) val = val.slice(0, 60) + '...';
-    val = val || '-';
-    values.set(key, val);
-  }
-
-  // Build the row string with simple spacing
-  const parts = keys.map(k => values.get(k) || '-');
-  return '| ' + (idx + 1) + ' | ' + parts.join(' | ') + ' |';
 }
 
 function spp(fp: string): string {

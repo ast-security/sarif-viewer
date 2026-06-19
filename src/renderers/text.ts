@@ -1,30 +1,37 @@
 import type { SarifOptions } from './types.js';
-import type { ParsedLog, ResultLevel } from '../sarif/types.js';
+import type { ParsedLog, ParsedResult, ResultLevel } from '../sarif/types.js';
 import { groupBySeveritySummary, sortResults } from '../sarif/utils.js';
-
-function c(colorName: string) {
-  const fn = (global as any).chalk;
-  return (s: string) => {
-    if (typeof fn === 'undefined' || typeof fn[colorName] !== 'function') return s;
-    return fn[colorName](s);
-  };
-}
-
-const lc: Record<ResultLevel, (s: string) => string> = {
-  error: c('red'),
-  warning: c('yellow'),
-  note: c('cyan'),
-  none: c('grey'),
-};
 
 export function renderText(parsedLog: ParsedLog, opts: SarifOptions = {}): string {
   const results = parsedLog.results;
   const sorted = sortResults(results, 'severity');
   const summary = groupBySeveritySummary(sorted);
 
-  const d: string[] = [];
-  const tool = parsedLog.tool.name + (parsedLog.tool.version ? ' v' + parsedLog.tool.version : '');
+  // Collect all unique property keys across all results
+  const allKeys = new Set<string>();
+  results.forEach(r => {
+    if (r.properties) {
+      for (const key of Object.keys(r.properties)) {
+        allKeys.add(key);
+      }
+    }
+  });
 
+  // Add standard fields that aren't properties
+  if (sorted.some(r => r.kind)) allKeys.add('Kind');
+  if (sorted.some(r => r.message)) allKeys.add('Message');
+  if (sorted.some(r => r.locations.some(l => l.filePath))) allKeys.add('File');
+  if (sorted.some(r => r.locations.some(l => l.line))) allKeys.add('Line');
+  if (sorted.some(r => r.locations.some(l => l.column))) allKeys.add('Column');
+  if (sorted.some(r => r.fix)) allKeys.add('Fix');
+  if (sorted.some(r => r.contextSnippet?.text)) allKeys.add('Snippet');
+  if (sorted.some(r => r.ruleFullDescription)) allKeys.add('Description');
+
+  const sortedKeys = Array.from(allKeys).sort();
+
+  const d: string[] = [];
+
+  // Header
   d.push(parsedLog.tool.name);
   if (parsedLog.tool.version) {
     d.push('  Version: ' + parsedLog.tool.version);
@@ -36,75 +43,102 @@ export function renderText(parsedLog: ParsedLog, opts: SarifOptions = {}): strin
   d.push('  Notes:    ' + summary.notes);
   d.push('  Total:    ' + summary.total);
   d.push('');
-  d.push('Results (By severity)');
-  d.push('\u2500'.repeat(85));
 
-  if (sorted.length === 0) {
-    d.push('  No results found.');
-  } else {
-    let cur = '';
-    for (const r of sorted) {
-      if (r.level !== cur) {
-        if (cur !== '') d.push('');
-        cur = r.level;
-        d.push('Level: ' + r.level);
-        d.push('\u2500'.repeat(70));
-      }
-      const icon = r.level === 'error' ? 'X' : r.level === 'warning' ? '!' : 'i';
-      const cnt = r.occurenceCount && r.occurenceCount > 1
-        ? ' (observed ' + r.occurenceCount + ' times)'
-        : '';
+  // Group by severity
+  const groups: Map<ResultLevel, ParsedResult[]> = new Map();
+  for (const r of sorted) {
+    const existing = groups.get(r.level) || [];
+    existing.push(r);
+    groups.set(r.level, existing);
+  }
+
+  const levelOrder: ResultLevel[] = ['error', 'warning', 'note', 'none'];
+
+  let first = true;
+  for (const level of levelOrder) {
+    const group = groups.get(level);
+    if (!group || group.length === 0) continue;
+
+    if (!first) d.push('');
+    first = false;
+
+    d.push('### ' + level.toUpperCase() + ' (Count: ' + group.length + ')');
+    d.push('');
+
+    for (let idx = 0; idx < group.length; idx++) {
+      const r = group[idx];
+      d.push('#### Result ' + (idx + 1) + ' - ' + r.ruleId);
       d.push('');
-      d.push('  [' + icon + '] [' + r.ruleId + '] ' + r.message + cnt);
 
-      // properties
-      const pp: string[] = [];
-      if (r.properties) {
-        for (const [key, value] of Object.entries(r.properties)) {
-          pp.push(key.toUpperCase() + ': ' + value);
+      // Build table header
+      const header: string[] = [];
+      const sep: string[] = [];
+      header.push('| Field');
+      sep.push('| ---');
+
+      for (const key of sortedKeys) {
+        header.push(' ' + key);
+        sep.push(' ---');
+      }
+      sep.push(' |');
+      header.push(' |');
+
+      // Build table body
+      const values: string[] = [];
+      values.push('| ' + (idx + 1)); // Index column
+
+      // Values for each key
+      for (const key of sortedKeys) {
+        let val = '';
+        if (key === 'Level') val = r.level;
+        else if (key === 'RuleId') val = r.ruleId;
+        else if (key === 'Kind') val = r.kind || '';
+        else if (key === 'Message') val = r.message;
+        else if (key === 'File') {
+          const loc = r.locations.find(l => l.filePath);
+          val = loc ? spp(loc.filePath) : '';
         }
-      }
-      if (r.kind) {
-        pp.push('KIND: ' + r.kind.toUpperCase());
-      }
-      if (pp.length > 0) {
-        d.push('  ' + pp.join(' | '));
-      }
-
-      const lp: string[] = [];
-      for (const loc of r.locations) {
-        if (loc.filePath) {
-          let p = spp(loc.filePath);
-          if (loc.line) p += ':' + loc.line;
-          if (loc.column) p += ':' + loc.column;
-          lp.push(p);
+        else if (key === 'Line') {
+          const loc = r.locations.find(l => l.filePath);
+          val = loc ? String(loc.line) : '';
         }
-      }
-      if (lp.length > 0) {
-        d.push('  ' + lp.join(' | '));
-      }
-
-      if (r.contextSnippet?.text) {
-        const line = r.contextSnippet.text.split('\n')[0];
-        if (line && line.trim()) {
-          d.push('  ' + (line.length > 78 ? line.slice(0, 78) + '\u2026' : line));
+        else if (key === 'Column') {
+          const loc = r.locations.find(l => l.filePath);
+          val = loc && loc.column ? String(loc.column) : '';
         }
-      }
-
-      if (r.ruleFullDescription) {
-        const dl = r.ruleFullDescription.split('\n').filter(l => l.trim())[0];
-        if (dl) {
-          d.push('  ' + (dl.length > 78 ? dl.slice(0, 78) + '\u2026' : dl));
+        else if (key === 'Description') {
+          val = r.ruleFullDescription || '';
         }
-      }
+        else if (key === 'Snippet') {
+          val = r.contextSnippet?.text?.split('\n')[0] || '';
+        }
+        else if (key === 'Fix') {
+          val = r.fix?.description || '';
+        }
+        else if (key === 'Occurrences') {
+          val = r.occurenceCount ? String(r.occurenceCount) : '';
+        }
+        else {
+          // Custom property from message.properties or rule.properties
+          val = r.properties?.[key.toLowerCase()] || r.properties?.[key] || '';
+        }
 
-      if (r.fix) {
-        d.push('  Fix: ' + r.fix.description);
+        // Truncate very long values
+        if (val.length > 50) val = val.slice(0, 50) + '...';
+        val = val || '-';
+        values.push('| ' + val);
       }
+      values.push('|');
+
+      // Print table
+      d.push(header.join(''));
+      d.push(sep.join(''));
+      d.push(values.join(''));
+      d.push('');
     }
   }
-  d.push('');
-  d.push('\u2500'.repeat(85));
+
+  d.push('---');
   return d.join('\n');
 }
 

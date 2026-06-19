@@ -26,6 +26,7 @@ export interface ParsedResult {
   ruleShortDescription: string;
   ruleFullDescription?: string;
   level: ResultLevel;
+  severity?: string;
   kind?: string;
   message: string;
   markdown?: string;
@@ -37,6 +38,26 @@ export interface ParsedResult {
   properties?: {
     [key: string]: string;
   };
+  categories?: {
+    category?: string;
+    cwe?: string;
+    cloudProvider?: string;
+    description?: string;
+    fileName?: string;
+    fileName?: string;
+    line?: string;
+  };
+}
+
+export interface SummaryData {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  info: number;
+  trace: number;
+  total: number;
+  scannedFiles: number;
 }
 
 export interface ParsedLocation {

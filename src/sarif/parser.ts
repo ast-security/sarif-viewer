@@ -232,6 +232,23 @@ export function parseSarif(log: Log): ParsedLog {
 
     // Extract custom properties from result message and rule
     const properties: { [key: string]: string } | undefined = getResultProperties(result, rule);
+    let severity = properties?.severity || properties?.SEVERITY || '';
+    
+    // If severity not in properties, try deriving from riskScore
+    if (!severity && properties && properties.riskScore) {
+      const score = parseFloat(properties.riskScore);
+      if (!isNaN(score)) {
+        if (score >= 7.0) severity = 'CRITICAL';
+        else if (score >= 4.0) severity = 'HIGH';
+        else if (score >= 2.0) severity = 'MEDIUM';
+        else severity = 'LOW';
+      }
+    }
+    
+    const cwe = properties?.cwe || properties?.CWE || '';
+    const cloudProvider = properties?.cloudProvider || properties?.cloud_provider || '';
+    const category = properties?.category || properties?.CATEGORY || '';
+    const fileName = properties?.fileName || properties?.file || '';
 
     results.push({
       index: i,
@@ -240,6 +257,7 @@ export function parseSarif(log: Log): ParsedLog {
       ruleShortDescription,
       ruleFullDescription,
       level,
+      severity: severity.toUpperCase() || 'UNKNOWN',
       kind: result.kind,
       message: getMessageText(result.message) ?? '',
       markdown: getMarkdown(result.message),
@@ -248,6 +266,12 @@ export function parseSarif(log: Log): ParsedLog {
       occurenceCount: result.occurrenceCount,
       fix,
       properties,
+      categories: {
+        category,
+        cwe,
+        cloudProvider,
+        fileName,
+      },
     });
   }
 

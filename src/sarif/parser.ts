@@ -127,6 +127,34 @@ function getRunInfo(log: Log): RunInfo {
   };
 }
 
+function getResultProperties(result: Result, rule: { id: string; name?: string; shortDescription?: string; fullDescription?: string } | undefined): { [key: string]: string } | undefined {
+  const properties: { [key: string]: string } = {};
+
+  // Merge message.properties (always higher priority)
+  const msgProps = (result.message as any)?.properties;
+  if (msgProps && typeof msgProps === 'object') {
+    for (const [k, v] of Object.entries(msgProps)) {
+      if (typeof v === 'string') {
+        properties[k] = v;
+      }
+    }
+  }
+
+  // Merge rule.properties if not overridden by message
+  if (rule) {
+    const ruleProps = (rule as any)?.properties;
+    if (ruleProps && typeof ruleProps === 'object') {
+      for (const [k, v] of Object.entries(ruleProps)) {
+        if (typeof v === 'string' && !properties[k]) {
+          properties[k] = v;
+        }
+      }
+    }
+  }
+
+  return Object.keys(properties).length > 0 ? properties : undefined;
+}
+
 export function parseSarif(log: Log): ParsedLog {
   const runInfo = getRunInfo(log);
   const run = (log.runs ?? [])[0] ?? {};
@@ -134,7 +162,8 @@ export function parseSarif(log: Log): ParsedLog {
 
   const runResults = run.results ?? [];
 
-  for (const result of runResults) {
+  for (let i = 0; i < runResults.length; i++) {
+    const result = runResults[i];
     let ruleId = '';
     if (result.rule?.id) {
       ruleId = result.rule.id;
@@ -201,8 +230,11 @@ export function parseSarif(log: Log): ParsedLog {
       };
     }
 
+    // Extract custom properties from result message and rule
+    const properties: { [key: string]: string } | undefined = getResultProperties(result, rule);
+
     results.push({
-      index: 0,
+      index: i,
       ruleId,
       ruleName,
       ruleShortDescription,
@@ -215,6 +247,7 @@ export function parseSarif(log: Log): ParsedLog {
       stackFrames,
       occurenceCount: result.occurrenceCount,
       fix,
+      properties,
     });
   }
 

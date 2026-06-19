@@ -125,6 +125,7 @@ export function htmlRender(parsedLog: ParsedLog, opts: HtmlOptions): string {
     ruleId: r.ruleId,
     level: r.level,
     message: r.message,
+    properties: r.properties || null,
     locations: r.locations.filter(l => l.filePath).map(l => ({
       filePath: l.filePath,
       line: l.line || 1,

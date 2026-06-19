@@ -57,6 +57,20 @@ export function renderText(parsedLog: ParsedLog, opts: SarifOptions = {}): strin
       d.push('');
       d.push('  [' + icon + '] [' + r.ruleId + '] ' + r.message + cnt);
 
+      // properties
+      const pp: string[] = [];
+      if (r.properties) {
+        for (const [key, value] of Object.entries(r.properties)) {
+          pp.push(key.toUpperCase() + ': ' + value);
+        }
+      }
+      if (r.kind) {
+        pp.push('KIND: ' + r.kind.toUpperCase());
+      }
+      if (pp.length > 0) {
+        d.push('  ' + pp.join(' | '));
+      }
+
       const lp: string[] = [];
       for (const loc of r.locations) {
         if (loc.filePath) {

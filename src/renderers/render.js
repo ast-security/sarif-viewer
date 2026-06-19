@@ -88,6 +88,7 @@
       icon: lvlIcon[lvlType(r.level)] || 'i',
       locHtml: locHtml,
       // Details
+      propertiesHtml: buildPropertiesHtml(r),
       descHtml: buildDescHtml(r),
       locSecHtml: locHtml ? '<div class="sec"><h4>Location</h4>' + locHtml + '</div>' : '',
       snippetHtml: buildSnippetHtml(r),
@@ -104,6 +105,18 @@
     if (lines.length === 0) return '';
     var l = lines[0].substring(0, 250);
     return '<div class="sec"><h4>Description</h4><p>' + esc(l) + '</p></div>';
+  }
+
+  function buildPropertiesHtml(r) {
+    if (!r.properties || Object.keys(r.properties).length === 0) return '';
+    var html = '<div class="sec"><h4>Properties</h4>';
+    for (var key in r.properties) {
+      if (r.properties.hasOwnProperty(key)) {
+        html += '<span class="rub">' + esc(key).toUpperCase() + ':</span> ' + esc(r.properties[key]) + '<br>';
+      }
+    }
+    html += '</div>';
+    return html;
   }
 
   function buildSnippetHtml(r) {
@@ -141,7 +154,7 @@
     document.getElementById('res').innerHTML = html;
   }
 
-  function buildCardHtml(c) {
+function buildCardHtml(c) {
     var html = '<div class="rcard lvl-' + c.levelType + '" data-idx="' + c.ridx + '">\n';
     html += '  <div class="rhdr" onclick="toggleDet(' + c.ridx + ')">\n';
     html += '    <div class="lic">' + c.icon + '</div>\n';
@@ -154,6 +167,7 @@
     html += '  </div>\n';
     html += '  <div class="rdtl" id="det-' + c.ridx + '">\n';
     html += '    <div class="rdbody">\n';
+    html += c.propertiesHtml;
     html += c.descHtml;
     html += c.locSecHtml;
     html += c.snippetHtml;

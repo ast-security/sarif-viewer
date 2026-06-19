@@ -34,6 +34,9 @@ export interface ParsedResult {
   stackFrames?: ParsedStackFrame[];
   occurenceCount?: number;
   fix?: ParsedFix;
+  properties?: {
+    [key: string]: string;
+  };
 }
 
 export interface ParsedLocation {

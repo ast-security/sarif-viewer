@@ -1,0 +1,153 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "tslint",
+          "version": "7.0.0",
+          "rules": [
+            {
+              "id": "no-unused-variable",
+              "shortDescription": { "text": "Variable is declared but never used" },
+              "fullDescription": { "text": "This variable is declared but never used in the code. Consider removing it or using it." },
+              "defaultConfiguration": { "level": "warning" }
+            },
+            {
+              "id": "no-console",
+              "shortDescription": { "text": "console statement is not allowed" },
+              "fullDescription": { "text": "console statements should not be present in production code. Use a proper logging library instead." },
+              "defaultConfiguration": { "level": "warning" }
+            },
+            {
+              "id": "no-debugger",
+              "shortDescription": { "text": "debugger statement is not allowed" },
+              "fullDescription": { "text": "debugger statements should not be present in production code." },
+              "defaultConfiguration": { "level": "error" }
+            },
+            {
+              "id": "no-var-redeclare",
+              "shortDescription": { "text": "Variable is redeclared" },
+              "fullDescription": { "text": "A variable cannot be redeclared because it causes confusion and makes code harder to understand." },
+              "defaultConfiguration": { "level": "error" }
+            },
+            {
+              "id": "semicolon",
+              "shortDescription": { "text": "Missing semicolon" },
+              "fullDescription": { "text": "This statement is missing a semicolon at the end." },
+              "defaultConfiguration": { "level": "note" }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "no-console",
+          "level": "warning",
+          "message": { "text": "Unexpected console statement." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/app.ts" },
+                "region": { "startLine": 5, "startColumn": 9 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "no-unused-variable",
+          "level": "warning",
+          "message": { "text": "Variable 'x' is declared but never used." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/utils.ts" },
+                "region": { "startLine": 12, "startColumn": 3 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "no-debugger",
+          "level": "error",
+          "message": { "text": "Unexpected debugger statement." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/debug.ts" },
+                "region": { "startLine": 8, "startColumn": 5 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "no-var-redeclare",
+          "level": "error",
+          "message": { "text": "Variable 'config' has already been declared." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/config.ts" },
+                "region": { "startLine": 3, "startColumn": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "no-unused-variable",
+          "level": "warning",
+          "message": { "text": "Variable 'tempData' is declared but never used." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/utils.ts" },
+                "region": { "startLine": 25, "startColumn": 7 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "no-console",
+          "level": "warning",
+          "occurrenceCount": 3,
+          "message": { "text": "Unexpected console statement." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/server.ts" },
+                "region": { "startLine": 14, "startColumn": 3 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "semicolon",
+          "level": "note",
+          "message": { "text": "Expected semicolon at end of line." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/styles.ts" },
+                "region": { "startLine": 42, "startColumn": 28 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "no-debugger",
+          "level": "error",
+          "message": { "text": "Unexpected debugger statement." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/test.ts" },
+                "region": { "startLine": 30, "startColumn": 1 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
